@@ -33,7 +33,7 @@ class Dfinder : public edm::EDAnalyzer
 
         virtual void BranchOutNTk(
                 DInfoBranches &DInfo, 
-                std::vector<pat::PackedCandidate> input_tracks, 
+                edm::View<pat::PackedCandidate> input_tracks, 
                 reco::Vertex thePrimaryV,
                 std::vector<int> isNeededTrackIdx,
                 std::vector<int> &D_counter,
@@ -49,7 +49,7 @@ class Dfinder : public edm::EDAnalyzer
 
         virtual void TkCombinationPermutation(
                 reco::Vertex thePrimaryV,
-                std::vector<pat::PackedCandidate> input_tracks, 
+                edm::View<pat::PackedCandidate> input_tracks, 
                 std::vector<int> isNeededTrackIdx,
                 float *mass_window,
                 std::vector< std::pair<float, int> > TkMassCharge,
@@ -61,7 +61,7 @@ class Dfinder : public edm::EDAnalyzer
 
         virtual void TkCombinationResFast(
                 reco::Vertex thePrimaryV,
-                std::vector<pat::PackedCandidate> input_tracks, 
+                edm::View<pat::PackedCandidate> input_tracks, 
                 std::vector<int> isNeededTrackIdx,
                 float *mass_window,
                 std::vector< std::pair<float, int> > TkMassCharge,
@@ -81,14 +81,18 @@ class Dfinder : public edm::EDAnalyzer
         //edm::InputTag hltLabel_;
         edm::EDGetTokenT< std::vector<reco::GenParticle> > genLabel_;
         // edm::EDGetTokenT< std::vector<pat::GenericParticle> > trackLabel_;
-        edm::EDGetTokenT< std::vector<pat::PackedCandidate> > trackLabel_;
-        edm::EDGetTokenT< std::vector<pat::PackedCandidate> > losttrackLabel_;
+        // edm::EDGetTokenT< std::vector<pat::PackedCandidate> > trackLabel_;
+        edm::EDGetTokenT< edm::View<pat::PackedCandidate> > trackLabel_;
+        // edm::EDGetTokenT< std::vector<pat::PackedCandidate> > losttrackLabel_;
         // edm::EDGetTokenT< std::vector<reco::Track> > trackLabelReco_;
         edm::EDGetTokenT< std::vector<PileupSummaryInfo> > puInfoLabel_; // !!
+        edm::EDGetTokenT< edm::ValueMap< float > > chi2Map_;
         edm::EDGetTokenT< reco::BeamSpot > bsLabel_;
         edm::EDGetTokenT< reco::VertexCollection > pvLabel_;
         edm::EDGetTokenT<edm::ValueMap<reco::DeDxData> > Dedx_Token1_;
         edm::EDGetTokenT<edm::ValueMap<reco::DeDxData> > Dedx_Token2_;
+
+        edm::EDGetTokenT<reco::EvtPlaneCollection> tok_eventplaneSrc_;
 
         double tkPtCut_;
         double tkEtaCut_;
@@ -178,8 +182,9 @@ Dfinder::Dfinder(const edm::ParameterSet& iConfig):theConfig(iConfig)
 
     Dchannel_ = iConfig.getParameter<std::vector<int> >("Dchannel");
     genLabel_           = consumes< std::vector<reco::GenParticle> >(iConfig.getParameter<edm::InputTag>("GenLabel"));
-    trackLabel_         = consumes< std::vector<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("TrackLabel"));
-    losttrackLabel_         = consumes< std::vector<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("lostTrackLabel"));
+    trackLabel_         = consumes< edm::View<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("TrackLabel"));
+    // losttrackLabel_         = consumes< std::vector<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("lostTrackLabel"));
+    chi2Map_            = consumes< edm::ValueMap< float > >( iConfig.getParameter< edm::InputTag >( "TrackChi2Label" ) );
     // trackLabelReco_     = consumes< std::vector<reco::Track> >(iConfig.getParameter<edm::InputTag>("TrackLabelReco"));
     //hltLabel_           = iConfig.getParameter<edm::InputTag>("HLTLabel");
     puInfoLabel_    = consumes< std::vector<PileupSummaryInfo> >(iConfig.getParameter<edm::InputTag>("PUInfoLabel")); // !!
@@ -220,6 +225,8 @@ Dfinder::Dfinder(const edm::ParameterSet& iConfig):theConfig(iConfig)
     // MVAMapLabelpA_ = consumes< std::vector<float> >(iConfig.getParameter<edm::InputTag>("MVAMapLabel"));
     // Dedx_Token1_ = consumes<edm::ValueMap<reco::DeDxData> >(iConfig.getParameter<edm::InputTag>("Dedx_Token1"));
     // Dedx_Token2_ = consumes<edm::ValueMap<reco::DeDxData> >(iConfig.getParameter<edm::InputTag>("Dedx_Token2"));
+
+    tok_eventplaneSrc_ = consumes<reco::EvtPlaneCollection>(iConfig.getParameter<edm::InputTag>("eventplaneSrc"));
 
     if (iConfig.exists("tktkRes_masswindowCut")) { tktkRes_masswindowCut_ = iConfig.getParameter<double>("tktkRes_masswindowCut"); }
     
@@ -279,10 +286,12 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     iSetup.get<IdealMagneticFieldRecord>().get(bField);
 
     // Change used muon and track collections
-    edm::Handle< std::vector<pat::PackedCandidate> > tks;
-    iEvent.getByToken(trackLabel_, tks);
-    edm::Handle< std::vector<pat::PackedCandidate> > losttks;
-    iEvent.getByToken(losttrackLabel_, losttks);
+    // edm::Handle< std::vector<pat::PackedCandidate> > tks;
+    // iEvent.getByToken(trackLabel_, tks);
+    auto tks = iEvent.getHandle( trackLabel_ );
+    // edm::Handle< std::vector<pat::PackedCandidate> > losttks;
+    // iEvent.getByToken(losttrackLabel_, losttks);
+    auto chi2Map = iEvent.getHandle( chi2Map_ );
     // edm::Handle< std::vector<reco::Track> > etracks;
     // iEvent.getByToken(trackLabelReco_, etracks);
     // if(etracks->size() != tks->size())
@@ -341,6 +350,49 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     }else{
         std::cout<< "No beam spot available from EventSetup \n";
     }
+
+
+    edm::Handle<reco::EvtPlaneCollection> eventplanes;
+    iEvent.getByToken(tok_eventplaneSrc_,eventplanes);
+
+    const reco::EvtPlane & ephfp1 = (*eventplanes)[15];
+    const reco::EvtPlane & ephfm1 = (*eventplanes)[15];
+    const reco::EvtPlane & ephfp2 = (*eventplanes)[1];
+    const reco::EvtPlane & ephfm2 = (*eventplanes)[0];
+    const reco::EvtPlane & ephfp3 = (*eventplanes)[7];
+    const reco::EvtPlane & ephfm3 = (*eventplanes)[6];
+    const reco::EvtPlane & eptk2 = (*eventplanes)[3];
+    const reco::EvtPlane & eptk3 = (*eventplanes)[9];
+
+    EvtInfo.ephfpAngle[0] = ephfp1.angle(2);
+    EvtInfo.ephfpAngle[1] = ephfp2.angle(2);
+    EvtInfo.ephfpAngle[2] = ephfp3.angle(2);
+
+    EvtInfo.ephfmAngle[0] = ephfm1.angle(2);
+    EvtInfo.ephfmAngle[1] = ephfm2.angle(2);
+    EvtInfo.ephfmAngle[2] = ephfm3.angle(2);
+
+    EvtInfo.ephfpQ[0] = ephfp1.q(2);
+    EvtInfo.ephfpQ[1] = ephfp2.q(2);
+    EvtInfo.ephfpQ[2] = ephfp3.q(2);
+
+    EvtInfo.ephfmQ[0] = ephfm1.q(2);
+    EvtInfo.ephfmQ[1] = ephfm2.q(2);
+    EvtInfo.ephfmQ[2] = ephfm3.q(2);
+
+    EvtInfo.eptkAngle[0] = eptk2.angle(2);
+    EvtInfo.eptkAngle[1] = eptk3.angle(2);
+
+    EvtInfo.eptkQ[0] = eptk2.q(2);
+    EvtInfo.eptkQ[1] = eptk3.q(2);
+
+    EvtInfo.ephfpSumW = ephfp2.sumw();
+    EvtInfo.ephfmSumW = ephfm2.sumw();
+    EvtInfo.eptkSumW  = eptk2.sumw();
+      //cout<<"tk  "<<eptk2.angle(2)<<" "<<eptk3.angle(2)<<endl;
+      cout<<"hfp "<<ephfp1.angle(2)<<endl;//" "<<ephfp3.angle(2)<<endl;
+      cout<<"hfm "<<ephfm1.angle(2)<<endl;//" "<<ephfm3.angle(2)<<endl;
+
 
     //get vertex informationa
     edm::Handle<reco::VertexCollection> VertexHandle;
@@ -470,11 +522,11 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         D_counter.push_back(0);
     }
 
-    std::vector<pat::PackedCandidate>   input_tracks;
-    input_tracks = *tks;
-    std::vector<pat::PackedCandidate>   input_losttracks;
-    input_losttracks = *losttks;
-    input_tracks.insert(input_tracks.end(), input_losttracks.begin(), input_losttracks.end());
+    // std::vector<pat::PackedCandidate>   input_tracks;
+    auto input_tracks = *tks;
+    // std::vector<pat::PackedCandidate>   input_losttracks;
+    // input_losttracks = *losttks;
+    // input_tracks.insert(input_tracks.end(), input_losttracks.begin(), input_losttracks.end());
     try{
         // const reco::GenParticle* genMuonPtr[MAX_MUON];
         // // memset(genMuonPtr,0x00,MAX_MUON);
@@ -490,7 +542,7 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
           if (input_tracks.size() == 0){
                 if (printInfo_) std::cout << "There's no track: " << iEvent.id() << std::endl;
             }else{
-            if (printInfo_) std::cout << "Got " << input_tracks.size() << " (" << input_losttracks.size() << " from lostTracks) tracks" << std::endl;
+            if (printInfo_) std::cout << "Got " << input_tracks.size() << " tracks" << std::endl;
                 if (input_tracks.size() > 0){
 
                     //Preselect tracks{{{
@@ -498,7 +550,8 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     std::vector<int> isNeededTrackIdx;
                     int PassedTrk = 0;
                     if(detailMode_) std::cout<<"------------------------- track"<<std::endl;
-                    for(std::vector<pat::PackedCandidate>::const_iterator tk_it=input_tracks.begin();
+                    for(edm::View<pat::PackedCandidate>::const_iterator tk_it=input_tracks.begin();
+                    // for(std::vector<pat::PackedCandidate>::const_iterator tk_it=input_tracks.begin();
                             tk_it != input_tracks.end(); tk_it++){
                         if(PassedTrk >= MAX_TRACK){
                             fprintf(stderr,"ERROR: number of tracks exceeds the size of array.\n");
@@ -520,6 +573,8 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                         TrackCutLevel->Fill(4);
                         if(doTkPreCut_){
                           if( !(tk_it->pseudoTrack().quality(reco::TrackBase::qualityByName("highPurity")))) continue;
+                          if( std::abs( tk_it->pseudoTrack().ptError() ) / tk_it->pseudoTrack().pt() >= 0.1 ) continue;
+                          if( tk_it->pseudoTrack().numberOfValidHits() < 11 ) continue;
                             TrackCutLevel->Fill(5);
                         }
                         isNeededTrack[tk_it-input_tracks.begin()] = true;
@@ -885,7 +940,7 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 // Setup Dedx
                 /* Under construction !! */
                 if(detailMode_) std::cout<<"------------------------- track gen"<<std::endl;
-                for(std::vector<pat::PackedCandidate>::const_iterator tk_it=input_tracks.begin();
+                for(edm::View<pat::PackedCandidate>::const_iterator tk_it=input_tracks.begin();
                         tk_it != input_tracks.end() ; tk_it++){
                     int tk_hindex = int(tk_it - input_tracks.begin());
                     if(tk_hindex>=int(isNeededTrack.size())) break;
@@ -934,6 +989,7 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
                     if(dropUnusedTracks_ && listOfRelativeDCand1.size() == 0 && listOfRelativeDCand2.size() == 0 && listOfRelativeDCand3.size() == 0 && listOfRelativeDCand4.size() == 0 && listOfRelativeDCand5.size() == 0 && listOfRelativeDResCand1.size() == 0 && listOfRelativeDResCand2.size() == 0 && listOfRelativeDResCand3.size() == 0 && listOfRelativeDResCand4.size() == 0) continue;//drop unused tracks
 
+                    
                     TrackInfo.index          [TrackInfo.size] = TrackInfo.size;
                     TrackInfo.handle_index   [TrackInfo.size] = tk_hindex;
                     TrackInfo.charge         [TrackInfo.size] = tk_it->charge();
@@ -952,7 +1008,8 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     // TrackInfo.fpendcaphit    [TrackInfo.size] = tk_it->pseudoTrack().hitPattern().hasValidHitInFirstPixelEndcap();
                     TrackInfo.fpbarrelhit    [TrackInfo.size] = tk_it->pseudoTrack().hitPattern().hasValidHitInPixelLayer(PixelSubdetector::PixelBarrel,1);
                     TrackInfo.fpendcaphit    [TrackInfo.size] = tk_it->pseudoTrack().hitPattern().hasValidHitInPixelLayer(PixelSubdetector::PixelEndcap,1);
-                    TrackInfo.chi2           [TrackInfo.size] = tk_it->pseudoTrack().chi2();
+                    // TrackInfo.chi2           [TrackInfo.size] = tk_it->pseudoTrack().chi2();                    
+                    TrackInfo.chi2           [TrackInfo.size] = (float)((*chi2Map)[ tks->ptrAt( tk_hindex ) ]) * tk_it->pseudoTrack().ndof();
                     TrackInfo.ndf            [TrackInfo.size] = tk_it->pseudoTrack().ndof();
                     TrackInfo.d0             [TrackInfo.size] = tk_it->pseudoTrack().d0();
                     TrackInfo.d0error        [TrackInfo.size] = tk_it->pseudoTrack().d0Error();
@@ -1413,7 +1470,7 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
     void Dfinder::TkCombinationPermutation(
             reco::Vertex thePrimaryV,
-            std::vector<pat::PackedCandidate> input_tracks, 
+            edm::View<pat::PackedCandidate> input_tracks, 
             std::vector<int> isNeededTrackIdx,
             float *mass_window,
             std::vector< std::pair<float, int> > TkMassCharge,
@@ -1648,7 +1705,7 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 
             void Dfinder::TkCombinationResFast(
                     reco::Vertex thePrimaryV,
-                    std::vector<pat::PackedCandidate> input_tracks, 
+                    edm::View<pat::PackedCandidate> input_tracks, 
                     std::vector<int> isNeededTrackIdx,
                     float *mass_window,
                     std::vector< std::pair<float, int> > TkMassCharge,
@@ -1879,7 +1936,7 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             //BranchOutNTk{{{
             void Dfinder::BranchOutNTk(//input 2~4 tracks
                     DInfoBranches &DInfo, 
-                    std::vector<pat::PackedCandidate> input_tracks, 
+                    edm::View<pat::PackedCandidate> input_tracks, 
                     reco::Vertex thePrimaryV,
                     std::vector<int> isNeededTrackIdx,
                     std::vector<int> &D_counter,
@@ -1921,6 +1978,10 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                 RefCountedKinematicTree         tktkRes_VFT;
                 RefCountedKinematicParticle     tktkRes_VFP;
                 RefCountedKinematicVertex       tktkRes_VFPvtx;
+
+                const MagneticField *field = bField.product();
+                AnalyticalImpactPointExtrapolator extrapolator(field);
+                TrajectoryStateOnSurface tsos;
 
                 TLorentzVector v4_tk;
                 std::vector<TLorentzVector> tktk_4vecs;//fitted tks
@@ -2188,6 +2249,19 @@ void Dfinder::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
                     if( DInfo.pt[DInfo.size] <= dCutSeparating_PtVal_[Dchannel_number-1] && (DInfo.svpvDistance[DInfo.size]/DInfo.svpvDisErr[DInfo.size]) < svpvDistanceCut_lowptD_[Dchannel_number-1]) continue;
                     else if( DInfo.pt[DInfo.size] > dCutSeparating_PtVal_[Dchannel_number-1] && (DInfo.svpvDistance[DInfo.size]/DInfo.svpvDisErr[DInfo.size]) < svpvDistanceCut_highptD_[Dchannel_number-1]) continue;
                     DMassCutLevel[Dchannel_number-1]->Fill(12);
+
+                    tsos = extrapolator.extrapolate(tktk_VFP->currentState().freeTrajectoryState(),
+                                   RecoVertex::convertPos(thePrimaryV.position()));
+                    Measurement1D cur3DIP;
+
+                    GlobalPoint refPoint          = tsos.globalPosition();
+                    GlobalError refPointErr       = tsos.cartesianError().position();
+                    GlobalPoint vertexPosition    = RecoVertex::convertPos(thePrimaryV.position());
+                    GlobalError vertexPositionErr = RecoVertex::convertError(thePrimaryV.error());
+                    cur3DIP =  (a3d.distance(VertexState(vertexPosition,vertexPositionErr), VertexState(refPoint, refPointErr))); //IPTools::absoluteImpactParameter3D(tsos, thePrimaryV, a3d);
+
+                    DInfo.ip3d[DInfo.size]            = cur3DIP.value();
+                    DInfo.ip3derr[DInfo.size]         = cur3DIP.error();
 
                     reco::Vertex::Point vp1(thePrimaryV.position().x(), thePrimaryV.position().y(), 0.);
                     reco::Vertex::Point vp2(tktk_VFPvtx->vertexState().position().x(), tktk_VFPvtx->vertexState().position().y(), 0.);

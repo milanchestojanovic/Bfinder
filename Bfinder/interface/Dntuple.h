@@ -13,6 +13,16 @@ public:
   int     EvtNo;
   int     LumiNo;
   int     Dsize;
+  float   ephfpAngle[3];
+  float   ephfmAngle[3];
+  float   ephfpQ[3];
+  float   ephfmQ[3];
+  float   eptkAngle[2];
+  float   eptkQ[2];  
+  float   epAngle[5];
+  float   ephfpSumW;
+  float   ephfmSumW;
+  float   eptkSumW;
   float   PVx;
   float   PVy;
   float   PVz;
@@ -62,6 +72,8 @@ public:
   float   DsvpvDistance_2D[MAX_XB];
   float   DsvpvDisErr_2D[MAX_XB];
   float   Ddca[MAX_XB];
+  float   Dip3d[MAX_XB];
+  float   Dip3derr[MAX_XB];
   float   DlxyBS[MAX_XB];
   float   DlxyBSErr[MAX_XB];
   float   DMaxDoca[MAX_XB];
@@ -341,6 +353,16 @@ public:
     dnt->Branch("EvtNo",&EvtNo);
     dnt->Branch("LumiNo",&LumiNo);
     dnt->Branch("Dsize",&Dsize);
+    dnt->Branch("ephfpAngle",&ephfpAngle,"ephfpAngle[3]/F");
+    dnt->Branch("ephfmAngle",&ephfmAngle,"ephfmAngle[3]/F");
+    dnt->Branch("ephfpQ",&ephfpQ,"ephfpQ[3]/F");
+    dnt->Branch("ephfmQ",&ephfmQ,"ephfmQ[3]/F");
+    dnt->Branch("eptkAngle",&eptkAngle,"eptkAngle[2]/F");
+    dnt->Branch("eptkQ",&eptkQ,"eptkQ[2]/F");
+    dnt->Branch("epAngle",&epAngle,"epAngle[5]/F");
+    dnt->Branch("ephfpSumW",&ephfpSumW,"ephfpSumW/F");
+    dnt->Branch("ephfmSumW",&ephfmSumW,"ephfmSumW/F");
+    dnt->Branch("eptkSumW",&eptkSumW,"eptkSumW/F");
     dnt->Branch("PVx",&PVx);
     dnt->Branch("PVy",&PVy);
     dnt->Branch("PVz",&PVz);
@@ -392,6 +414,8 @@ public:
     dnt->Branch("DsvpvDistance_2D",DsvpvDistance_2D,"DsvpvDistance_2D[Dsize]/F");
     dnt->Branch("DsvpvDisErr_2D",DsvpvDisErr_2D,"DsvpvDisErr_2D[Dsize]/F");
     dnt->Branch("Ddca",Ddca,"Ddca[Dsize]/F");
+    dnt->Branch("ImpactParameter3D",Dip3d,"Dip3d[Dsize]/F");
+    dnt->Branch("ImpactParameter3Derror",Dip3derr,"Dip3derr[Dsize]/F");
     dnt->Branch("DlxyBS",DlxyBS,"DlxyBS[Dsize]/F");
     dnt->Branch("DlxyBSErr",DlxyBSErr,"DlxyBSErr[Dsize]/F");
     dnt->Branch("DMaxDoca",DMaxDoca,"DMaxDoca[Dsize]/F");
@@ -1217,6 +1241,32 @@ public:
     RunNo = EvtInfo->RunNo;
     EvtNo = EvtInfo->EvtNo;
     LumiNo = EvtInfo->LumiNo;
+
+    ephfpAngle[0] = EvtInfo->ephfpAngle[0];
+    ephfpAngle[1] = EvtInfo->ephfpAngle[1];
+    ephfpAngle[2] = EvtInfo->ephfpAngle[2];
+    ephfmAngle[0] = EvtInfo->ephfmAngle[0];
+    ephfmAngle[1] = EvtInfo->ephfmAngle[1];
+    ephfmAngle[2] = EvtInfo->ephfmAngle[2];
+    ephfpQ[0] = EvtInfo->ephfpQ[0];
+    ephfpQ[1] = EvtInfo->ephfpQ[1];
+    ephfpQ[2] = EvtInfo->ephfpQ[2];
+    ephfmQ[0] = EvtInfo->ephfmQ[0];
+    ephfmQ[1] = EvtInfo->ephfmQ[1];
+    ephfmQ[2] = EvtInfo->ephfmQ[2];
+    eptkAngle[0] = EvtInfo->eptkAngle[0];
+    eptkAngle[1] = EvtInfo->eptkAngle[1];
+    eptkQ[0] = EvtInfo->eptkQ[0];
+    eptkQ[1] = EvtInfo->eptkQ[1];
+    epAngle[0] = EvtInfo->epAngle[0];
+    epAngle[1] = EvtInfo->epAngle[1];
+    epAngle[2] = EvtInfo->epAngle[2];
+    epAngle[3] = EvtInfo->epAngle[3];
+    epAngle[4] = EvtInfo->epAngle[4];
+    ephfpSumW = EvtInfo->ephfpSumW;
+    ephfmSumW = EvtInfo->ephfmSumW;
+    eptkSumW = EvtInfo->eptkSumW;
+
     PVx = EvtInfo->PVx;
     PVy = EvtInfo->PVy;
     PVz = EvtInfo->PVz;
@@ -1297,6 +1347,9 @@ public:
 
     //    float r2lxyBS = (DInfo->vtxX[j]-EvtInfo->BSx+(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdxdz) * (DInfo->vtxX[j]-EvtInfo->BSx+(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdxdz)
     //      + (DInfo->vtxY[j]-EvtInfo->BSy+(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdydz) * (DInfo->vtxY[j]-EvtInfo->BSy+(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdydz);
+    Dip3d[typesize] = DInfo->ip3d[j];    
+    Dip3derr[typesize] = DInfo->ip3derr[j];
+
     float r2lxyBS = (DInfo->vtxX[j]-EvtInfo->BSx-(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdxdz) * (DInfo->vtxX[j]-EvtInfo->BSx-(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdxdz)
       + (DInfo->vtxY[j]-EvtInfo->BSy-(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdydz) * (DInfo->vtxY[j]-EvtInfo->BSy-(DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdydz);
     float xlxyBS = DInfo->vtxX[j]-EvtInfo->BSx - (DInfo->vtxZ[j]-EvtInfo->BSz)*EvtInfo->BSdxdz;

@@ -125,6 +125,16 @@ class EvtInfoBranches{ //{{{
 		//bool	hltflag[N_TRIGGER_NAMES]; //status of HLT
 		//int	nHLTm; //# of HLT hope to be matched
 		//char	hltflagm[N_TRIGGER_NAMES]; //status of HLT hope to be matched
+        float   ephfpAngle[3];
+        float   ephfmAngle[3];
+        float   ephfpQ[3];
+        float   ephfmQ[3];
+        float   eptkAngle[2];
+        float   eptkQ[2];
+        float   epAngle[5];  
+        float   ephfpSumW;
+        float   ephfmSumW;
+        float   eptkSumW;
 		float	PVx;
 		float	PVy;
 		float	PVz;
@@ -1043,6 +1053,8 @@ public:
     float  svpvDistance_2D[MAX_XB];
     float  svpvDisErr_2D[MAX_XB];
     float  MaxDoca[MAX_XB];
+    float  ip3d[MAX_XB];
+    float  ip3derr[MAX_XB];
     float  vtxX[MAX_XB];
     float  vtxY[MAX_XB];
     float  vtxZ[MAX_XB];

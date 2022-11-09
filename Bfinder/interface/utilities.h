@@ -64,6 +64,16 @@
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/TrackReco/interface/DeDxData.h"
 
+#include "DataFormats/HeavyIonEvent/interface/EvtPlane.h"
+#include "TrackingTools/GeomPropagators/interface/AnalyticalImpactPointExtrapolator.h"
+#include "TrackingTools/GeomPropagators/interface/AnalyticalImpactPointExtrapolator.h"
+#include "TrackingTools/PatternTools/interface/TransverseImpactPointExtrapolator.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
+#include "RecoVertex/KinematicFit/interface/KinematicParticleFitter.h"
+#include "RecoVertex/KinematicFit/interface/MultiTrackMassKinematicConstraint.h"
+#include "RecoVertex/VertexPrimitives/interface/ConvertToFromReco.h"
+#include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
+
 class CommonFuncts{//{{{
     public:
         void test(){
